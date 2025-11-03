@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<libraryInfos>
+    <libraryInfo home="/Users/mwlanaz/.p2/pool/plugins/org.eclipse.justj.openjdk.hotspot.jre.full.macosx.aarch64_21.0.8.v20250724-1412" version="21.0.8">
+        <bootpath>
+            <entry path="null"/>
+        </bootpath>
+        <extensionDirs>
+            <entry path="null"/>
+        </extensionDirs>
+        <endorsedDirs>
+            <entry path="null"/>
+        </endorsedDirs>
+    </libraryInfo>
+    <libraryInfo home="/Users/mwlanaz/.sdkman/candidates/java/22.0.1-oracle" version="22.0.1"/>
+    <libraryInfo home="/Users/mwlanaz/.sdkman/candidates/java/8.0.412-zulu" version="1.8.0_412">
+        <bootpath>
+            <entry path="/Users/mwlanaz/.sdkman/candidates/java/8.0.412-zulu/zulu-8.jdk/Contents/Home/jre/lib/resources.jar"/>
+            <entry path="/Users/mwlanaz/.sdkman/candidates/java/8.0.412-zulu/zulu-8.jdk/Contents/Home/jre/lib/rt.jar"/>
+            <entry path="/Users/mwlanaz/.sdkman/candidates/java/8.0.412-zulu/zulu-8.jdk/Contents/Home/jre/lib/sunrsasign.jar"/>
+            <entry path="/Users/mwlanaz/.sdkman/candidates/java/8.0.412-zulu/zulu-8.jdk/Contents/Home/jre/lib/jsse.jar"/>
+            <entry path="/Users/mwlanaz/.sdkman/candidates/java/8.0.412-zulu/zulu-8.jdk/Contents/Home/jre/lib/jce.jar"/>
+            <entry path="/Users/mwlanaz/.sdkman/candidates/java/8.0.412-zulu/zulu-8.jdk/Contents/Home/jre/lib/charsets.jar"/>
+            <entry path="/Users/mwlanaz/.sdkman/candidates/java/8.0.412-zulu/zulu-8.jdk/Contents/Home/jre/lib/jfr.jar"/>
+            <entry path="/Users/mwlanaz/.sdkman/candidates/java/8.0.412-zulu/zulu-8.jdk/Contents/Home/jre/lib/cat.jar"/>
+            <entry path="/Users/mwlanaz/.sdkman/candidates/java/8.0.412-zulu/zulu-8.jdk/Contents/Home/jre/classes"/>
+        </bootpath>
+        <extensionDirs>
+            <entry path="/Users/mwlanaz/Library/Java/Extensions"/>
+            <entry path="/Users/mwlanaz/.sdkman/candidates/java/8.0.412-zulu/zulu-8.jdk/Contents/Home/jre/lib/ext"/>
+            <entry path="/Library/Java/Extensions"/>
+            <entry path="/Network/Library/Java/Extensions"/>
+            <entry path="/System/Library/Java/Extensions"/>
+            <entry path="/usr/lib/java"/>
+        </extensionDirs>
+        <endorsedDirs>
+            <entry path="/Users/mwlanaz/.sdkman/candidates/java/8.0.412-zulu/zulu-8.jdk/Contents/Home/jre/lib/endorsed"/>
+        </endorsedDirs>
+    </libraryInfo>
+    <libraryInfo home="/Users/mwlanaz/.p2/pool/plugins/org.eclipse.justj.openjdk.hotspot.jre.full.macosx.aarch64_21.0.8.v20250724-1412/jre" version="21.0.8"/>
+    <libraryInfo home="/Users/mwlanaz/.sdkman/candidates/java/17.0.11-oracle" version="17.0.11"/>
+    <libraryInfo home="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home" version="1.8.0_401">
+        <bootpath>
+            <entry path="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/lib/resources.jar"/>
+            <entry path="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/lib/rt.jar"/>
+            <entry path="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/lib/jsse.jar"/>
+            <entry path="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/lib/jce.jar"/>
+            <entry path="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/lib/charsets.jar"/>
+            <entry path="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/lib/jfr.jar"/>
+            <entry path="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/classes"/>
+        </bootpath>
+        <extensionDirs>
+            <entry path="/Users/mwlanaz/Library/Java/Extensions"/>
+            <entry path="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/lib/ext"/>
+            <entry path="/Library/Java/Extensions"/>
+            <entry path="/Network/Library/Java/Extensions"/>
+            <entry path="/System/Library/Java/Extensions"/>
+            <entry path="/usr/lib/java"/>
+        </extensionDirs>
+        <endorsedDirs>
+            <entry path="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/lib/endorsed"/>
+        </endorsedDirs>
+    </libraryInfo>
+</libraryInfos>
