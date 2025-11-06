@@ -3,7 +3,7 @@ package contoh;
 import org.cloudbus.cloudsim.*;
 import org.cloudbus.cloudsim.core.CloudSim;
 import org.cloudbus.cloudsim.provisioners.*;
-import java.io.*; // Pertahankan import ini, tapi gunakan java.io.File secara eksplisit di main
+import java.io.*;
 import java.util.*;
 
 public class ExampleMOWSExperiment {
@@ -36,27 +36,17 @@ public class ExampleMOWSExperiment {
     // Scheduler type (as requested)
     static final String CLOUDLET_SCHEDULER = "TimeShared";
 
-    // Experiment counts (Hanya digunakan di Mode 1)
+    // Experiment counts (1000 .. 10000 step 1000)
     static final int[] TASK_COUNTS = {1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000};
     
-    // Konstanta: Jumlah pengulangan per skenario (10 kali)
+    // Konstanta: Jumlah pengulangan per skenario
     static final int NUM_RUNS = 10; 
-    
-    // --- PENGATURAN DATASET (Diatur untuk SDSC) ---
-    static final int DATASET_MODE = 2; // MODE SDSC AKTIF
 
-    // Jika DATASET_MODE = 1 (Dicadangkan)
-    static final String STRUCTURED_BASE_PATH = "./datasets/randomStratified/RandStratified"; 
-    static final String STRUCTURED_FILE_EXT = ".txt";
-
-    // Jika DATASET_MODE = 2 (Diaktifkan)
-    static final String SDSC_FILE = "./datasets/SDSC/SDSC7395.txt"; 
-    
     // Random seed for reproducibility
     static final long SEED = 12345L;
     static final Random RAND = new Random(SEED);
     
-    // ROUND-ROBIN: Indeks VM berikutnya yang akan dipilih
+    // 👇 ROUND-ROBIN: Indeks VM berikutnya yang akan dipilih
     static int nextVmIndex = 0; 
 
     public static void main(String[] args) {
@@ -67,56 +57,29 @@ public class ExampleMOWSExperiment {
             // Header untuk Tabel Hasil Akhir (Rata-Rata)
             String finalTable = "scenario,taskCount,avgTotalCpuTime,avgTotalWaitTime,avgAvgStartTime,avgAvgExecutionTime,avgAvgFinishTime,avgThroughput,avgMakespan,avgImbalanceDegree,avgResourceUtilization,avgTotalEnergy\n";
 
-            // Tentukan set tugas yang akan diproses
-            List<Integer> tasksToProcess = new ArrayList<>();
-            List<Integer> initialLengths = null;
-            String scenarioMode;
-
-            if (DATASET_MODE == 2) {
-                // --- MODE SDSC: Baca data SDSC sekali ---
-                initialLengths = readSDSCData();
-                if (initialLengths.isEmpty()) {
-                     System.err.println("Gagal memuat data SDSC. Eksperimen dibatalkan.");
-                     return;
-                }
-                tasksToProcess.add(initialLengths.size()); 
-                scenarioMode = "SDSC";
-            } else {
-                // --- MODE STRUCTURED (Jika DATASET_MODE diubah ke 1) ---
-                for(int t : TASK_COUNTS) tasksToProcess.add(t);
-                scenarioMode = STRUCTURED_BASE_PATH.contains("Stratified") ? "Stratified" : "Simple";
-            }
-
-            for (int tasks : tasksToProcess) {
-                // Gunakan lengths yang sudah dibaca (SDSC) atau null (Structured)
-                List<Integer> currentLengths = (DATASET_MODE == 2) ? initialLengths : null;
-
-                // --- MOWS ---
-                String mowsResults = runMultipleExperiments(tasks, true, currentLengths);
+            for (int tasks : TASK_COUNTS) {
+                // Proses MOWS (10 kali pengulangan)
+                String mowsResults = runMultipleExperiments(tasks, true);
                 csvOut += mowsResults;
-                finalTable += calculateAndAppendAverage(tasks, "MOWS_" + scenarioMode, mowsResults);
+                finalTable += calculateAndAppendAverage(tasks, "MOWS", mowsResults);
 
-                // --- Baseline (Round-Robin) ---
-                String baselineResults = runMultipleExperiments(tasks, false, currentLengths);
+                // Proses Baseline (Round-Robin, 10 kali pengulangan)
+                String baselineResults = runMultipleExperiments(tasks, false);
                 csvOut += baselineResults;
-                finalTable += calculateAndAppendAverage(tasks, "Baseline_RR_" + scenarioMode, baselineResults);
+                finalTable += calculateAndAppendAverage(tasks, "Baseline_RoundRobin", baselineResults);
 
-                System.out.printf("Finished %s experiments for tasks=%d (%d runs each)%n", scenarioMode, tasks, NUM_RUNS);
+                System.out.printf("Finished experiments for tasks=%d (10 runs each)%n", tasks);
             }
 
-            // Tulis file CSV detil dan ringkasan
-            String baseDir = System.getProperty("user.dir") + "/outputs/" + scenarioMode.toLowerCase();
-            
-            // 👇 PERBAIKAN ERROR: Menggunakan java.io.File secara eksplisit
-            new java.io.File(baseDir).mkdirs(); 
-            
-            String detailFile = baseDir + "/mows_rr_experiment_details.csv";
+            // Tulis file CSV detil (semua 100-200 baris data mentah)
+            String detailFile = System.getProperty("user.dir") + "/outputs/mows_rr_experiment_details.csv";
             try (FileWriter fw = new FileWriter(detailFile)) {
                 fw.write(csvOut);
             }
             System.out.println("Detailed CSV saved at: " + detailFile);
 
-            String summaryFile = baseDir + "/mows_rr_experiment_summary.csv";
+            // Tulis file CSV ringkasan (hanya rata-rata)
+            String summaryFile = System.getProperty("user.dir") + "/outputs/mows_rr_experiment_summary.csv";
             try (FileWriter fw = new FileWriter(summaryFile)) {
                 fw.write(finalTable);
             }
@@ -130,18 +93,26 @@ public class ExampleMOWSExperiment {
 
     // --- Metode Pembantu untuk Pengulangan Eksperimen ---
 
-    private static String runMultipleExperiments(int taskCount, boolean useMOWS, List<Integer> preLoadedLengths) throws Exception {
+    /**
+     * Menjalankan eksperimen sebanyak NUM_RUNS (10 kali) dan mengembalikan semua hasil.
+     */
+    private static String runMultipleExperiments(int taskCount, boolean useMOWS) throws Exception {
         StringBuilder results = new StringBuilder();
+        // Reset nextVmIndex sebelum setiap batch runs
         nextVmIndex = 0; 
         
         for (int run = 1; run <= NUM_RUNS; run++) {
+            // CloudSim harus dihentikan dan diinisialisasi ulang untuk setiap run
             CloudSim.terminateSimulation(); 
-            String runRes = runExperiment(taskCount, useMOWS, run, preLoadedLengths);
+            String runRes = runExperiment(taskCount, useMOWS, run);
             results.append(runRes).append("\n");
         }
         return results.toString();
     }
 
+    /**
+     * Menghitung rata-rata dari 10 kali pengulangan dan mengembalikannya sebagai baris CSV.
+     */
     private static String calculateAndAppendAverage(int taskCount, String scenario, String runResults) {
         final int METRIC_COUNT = 10; 
         double[] totalMetrics = new double[METRIC_COUNT];
@@ -150,10 +121,12 @@ public class ExampleMOWSExperiment {
         String[] lines = runResults.split("\n");
         for (String line : lines) {
             if (line.trim().isEmpty()) continue;
+            // Format: scenario,taskCount,run,M1,M2,M3,...
             String[] parts = line.split(",");
             if (parts.length < METRIC_COUNT + 3) continue; 
 
             try {
+                // Metrik dimulai dari indeks 3 (M1)
                 for (int i = 0; i < METRIC_COUNT; i++) {
                     totalMetrics[i] += Double.parseDouble(parts[i + 3].trim());
                 }
@@ -165,11 +138,14 @@ public class ExampleMOWSExperiment {
 
         if (actualRuns == 0) return "";
 
+        // Buat baris Rata-Rata
         StringBuilder avgRowBuilder = new StringBuilder();
+        // Kolom pertama: Scenario (MOWS/Baseline) + Kolom kedua: taskCount
         avgRowBuilder.append(scenario).append(",").append(taskCount).append(",");
         
         for (int i = 0; i < METRIC_COUNT; i++) {
             double average = totalMetrics[i] / actualRuns;
+            // Format 10 angka di belakang koma (sesuai permintaan presisi)
             avgRowBuilder.append(String.format(Locale.US, "%.10f", average)); 
             if (i < METRIC_COUNT - 1) {
                 avgRowBuilder.append(",");
@@ -181,20 +157,27 @@ public class ExampleMOWSExperiment {
 
     // --- Metode Inti CloudSim ---
 
-    private static String runExperiment(int taskCount, boolean useMOWS, int run, List<Integer> preLoadedLengths) throws Exception {
+    /**
+     * Menjalankan satu kali eksperimen (Run ke-X).
+     */
+    private static String runExperiment(int taskCount, boolean useMOWS, int run) throws Exception {
+        // 1. init CloudSim (Diulang setiap run)
         int numUser = 1;
         Calendar calendar = Calendar.getInstance();
         boolean traceFlag = false;
         CloudSim.init(numUser, calendar, traceFlag);
 
+        // 2. create datacenters
         List<Datacenter> datacenters = new ArrayList<>();
         for (int d = 0; d < NUM_DATACENTER; d++) {
             datacenters.add(createDatacenter("Datacenter_" + d));
         }
 
+        // 3. create broker
         DatacenterBroker broker = createBroker();
         int brokerId = broker.getId();
 
+        // 4. create VMs (collect all VMs in vmList)
         List<Vm> vmList = new ArrayList<>();
         int vmIdCounter = 0;
         for (Datacenter dc : datacenters) {
@@ -206,17 +189,21 @@ public class ExampleMOWSExperiment {
         }
         broker.submitVmList(vmList);
 
-        List<Integer> lengths = getTaskLengths(taskCount, preLoadedLengths); 
-        List<Cloudlet> cloudletList = createCloudletList(brokerId, vmList, 1, lengths);
+        // 5. create cloudlets
+        List<Cloudlet> cloudletList = createCloudletList(brokerId, vmList, 1, taskCount);
 
+        // 6. scheduling:
         if (useMOWS) {
             scheduleWithMOWS(cloudletList, vmList);
         } else {
+            // 👇 PERUBAHAN: Memanggil Round-Robin
             roundRobinAssignCloudlets(cloudletList, vmList);
         }
 
+        // submit cloudlets
         broker.submitCloudletList(cloudletList);
 
+        // 7. start simulation & stop
         CloudSim.startSimulation();
         List<Cloudlet> newList = broker.getCloudletReceivedList();
         CloudSim.stopSimulation();
@@ -232,6 +219,7 @@ public class ExampleMOWSExperiment {
 
         for (Cloudlet cl : newList) {
             if (cl.getStatus() == Cloudlet.SUCCESS) {
+                // ... (pengumpulan metrik) ...
                 double exec = cl.getActualCPUTime();
                 double start = cl.getExecStartTime();
                 double finish = cl.getFinishTime();
@@ -256,6 +244,7 @@ public class ExampleMOWSExperiment {
         double avgFinish = completed>0 ? sumFinish / completed : 0;
         double throughput = makespan>0 ? ((double)completed / makespan) : 0.0;
 
+        // Imbalance degree:
         double maxExec = 0.0, minExec = Double.POSITIVE_INFINITY, sumPerVM = 0.0;
         for (double v : vmExecSums.values()) {
             maxExec = Math.max(maxExec, v);
@@ -269,12 +258,15 @@ public class ExampleMOWSExperiment {
         } else if (minExec==Double.POSITIVE_INFINITY) minExec = 0.0;
         double imbalanceDegree = avgPerVM>0 ? (maxExec - minExec) / avgPerVM : 0.0;
 
+        // resource utilization:
         double resourceUtilization = (vmCount>0 && makespan>0) ? (totalCpuTime / (vmCount * makespan)) : 0.0;
 
+        // energy estimate:
         int totalHosts = NUM_DATACENTER * HOSTS_PER_DATACENTER;
         double totalEnergy = POWER_PER_HOST * totalHosts * makespan; 
 
-        String scenario = useMOWS ? "MOWS" : "Baseline_RoundRobin"; 
+        // Build CSV row:
+        String scenario = useMOWS ? "MOWS" : "Baseline_RoundRobin"; // Diubah
         String row = String.format(Locale.US,
                 "%s,%d,%d,%.10f,%.10f,%.10f,%.10f,%.10f,%.10f,%.10f,%.10f,%.10f,%.10f",
                 scenario, taskCount, run, 
@@ -287,18 +279,33 @@ public class ExampleMOWSExperiment {
 
     // --- Metode Implementasi Scheduler ---
 
+    /**
+     * Round-Robin: assign each cloudlet sequentially to a VM.
+     */
     private static void roundRobinAssignCloudlets(List<Cloudlet> cloudlets, List<Vm> vms) {
         int numVms = vms.size();
         if (numVms == 0) return;
+
+        // Gunakan nextVmIndex global (static) untuk melanjutkan penugasan
+        // Jika Anda ingin RR selalu mulai dari VM pertama untuk setiap run, 
+        // Anda harus mereset nextVmIndex di awal runMultipleExperiments. 
+        // Saat ini, nextVmIndex di-reset di runMultipleExperiments.
         
         for (Cloudlet cl : cloudlets) {
+            // 1. Pilih VM berikutnya
             Vm vm = vms.get(nextVmIndex);
+            
+            // 2. Tetapkan Cloudlet
             cl.setVmId(vm.getId());
+
+            // 3. Update indeks secara melingkar (circular)
             nextVmIndex = (nextVmIndex + 1) % numVms;
         }
     }
     
+    // MOWS scheduler (Tidak Berubah)
     private static void scheduleWithMOWS(List<Cloudlet> cloudlets, List<Vm> vms) {
+        // constants for normalization (tune if needed)
         double maxTaskLength = 20000.0;
         double maxVmMips = 6000.0;
         double maxCommSize = 2000.0;
@@ -314,12 +321,12 @@ public class ExampleMOWSExperiment {
             double taskCompNorm = Math.min(1.0, cl.getCloudletLength() / maxTaskLength);
             double taskCommNorm = Math.min(1.0, (double)CLOUDLET_FILESIZE / maxCommSize); 
 
-            double taskSecDemand = RAND.nextDouble(); 
+            double taskSecDemand = RAND.nextDouble(); // 0..1
 
             for (Vm vm : vms) {
                 double vmMipsNorm = Math.min(1.0, (double)vm.getMips() / maxVmMips);
                 double vmBwNorm = Math.min(1.0, (double)vm.getBw() / maxVmBw);
-                double vmSecurity = RAND.nextDouble(); 
+                double vmSecurity = RAND.nextDouble(); // pseudo security capability
 
                 double CD = Math.max(0.0, taskCompNorm - vmMipsNorm);
                 double TD = Math.max(0.0, taskCommNorm - vmBwNorm);
@@ -341,18 +348,42 @@ public class ExampleMOWSExperiment {
         }
     }
     
-    // --- Metode Implementasi Pembacaan Dataset Baru ---
+    // --- Metode Pembuatan Objek CloudSim (Tidak Berubah) ---
 
-    private static List<Integer> getTaskLengths(int taskCount, List<Integer> preLoadedLengths) {
-        if (DATASET_MODE == 2) {
-            return preLoadedLengths;
-        } else {
-            return readStructuredData(taskCount);
+    private static Datacenter createDatacenter(String name) throws Exception {
+        // ... (implementasi createDatacenter)
+        List<Host> hostList = new ArrayList<>();
+        for (int i = 0; i < HOSTS_PER_DATACENTER; i++) {
+            List<Pe> peList = new ArrayList<>();
+            peList.add(new Pe(HOST_PE, new PeProvisionerSimple(HOST_PE_MIPS)));
+
+            Host host = new Host(i, new RamProvisionerSimple(HOST_RAM), new BwProvisionerSimple(HOST_BW), HOST_STORAGE, peList, new VmSchedulerTimeShared(peList));
+            hostList.add(host);
         }
+        DatacenterCharacteristics characteristics = new DatacenterCharacteristics("x86", "Linux", VMM, hostList, 10.0, HOST_COST, 0.05, 0.1, 0.1);
+        return new Datacenter(name, characteristics, new VmAllocationPolicySimple(hostList), new LinkedList<Storage>(), 0);
     }
-    
-    private static List<Integer> readStructuredData(int expectedCount) {
-        String filename = STRUCTURED_BASE_PATH + expectedCount + STRUCTURED_FILE_EXT;
+
+    private static DatacenterBroker createBroker() throws Exception {
+        return new DatacenterBroker("Broker_" + UUID.randomUUID().toString().substring(0,5));
+    }
+
+    private static List<Cloudlet> createCloudletList(int brokerId, List<Vm> vmList, int pesNumber, int cloudletAmount) {
+        List<Cloudlet> cloudletList = new ArrayList<>();
+        UtilizationModelFull utilModel = new UtilizationModelFull();
+        List<Integer> lengths = tryReadDatasetLengths(cloudletAmount);
+
+        for (int i = 0; i < cloudletAmount; i++) {
+            long length = lengths.get(i);
+            Cloudlet cloudlet = new Cloudlet(i, length, pesNumber, CLOUDLET_FILESIZE, CLOUDLET_OUTPUTSIZE, utilModel, utilModel, utilModel);
+            cloudlet.setUserId(brokerId);
+            cloudletList.add(cloudlet);
+        }
+        return cloudletList;
+    }
+
+    private static List<Integer> tryReadDatasetLengths(int expectedCount) {
+    	String filename = "./datasets/randomStratified/RandStratified" + expectedCount + ".txt";
         List<Integer> lens = new ArrayList<>();
         try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
             String line;
@@ -376,80 +407,5 @@ public class ExampleMOWSExperiment {
             System.out.println("Dataset file not found (" + filename + "). Using random lengths as fallback.");
             return lens;
         }
-    }
-
-    /**
-     * Membaca file SDSC. Disederhanakan untuk mengasumsikan setiap baris berisi
-     * panjang tugas tunggal (MI), karena format file yang diberikan.
-     */
-    private static List<Integer> readSDSCData() {
-        String filename = SDSC_FILE;
-        List<Integer> lens = new ArrayList<>();
-        int successfulTasks = 0;
-        
-        try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                line = line.trim();
-                // Lewati baris komentar/header SDSC (biasanya dimulai dengan ';')
-                if (line.isEmpty() || line.startsWith(";")) continue; 
-                
-                try {
-                    // LANGKAH PENTING: Coba parse seluruh baris sebagai nilai panjang tugas.
-                    // Jika angkanya besar, gunakan Long.
-                    long length = (long)Double.parseDouble(line); // Pakai Double.parseDouble dulu untuk menangani nilai 0.96, dll.
-                    
-                    if (length > 0) {
-                        // Batasi agar tidak crash jika panjang tugas melebihi batas Integer
-                        if (length > Integer.MAX_VALUE) { 
-                           length = Integer.MAX_VALUE;
-                        }
-                        lens.add((int) length); 
-                        successfulTasks++;
-                    }
-                } catch (NumberFormatException e) {
-                    // Abaikan baris yang bukan angka
-                    // System.out.println("DEBUG: Skipping line: " + line + " (Not a number)");
-                }
-            }
-            System.out.println("Loaded SDSC dataset file: " + filename + " with " + successfulTasks + " tasks.");
-            return lens;
-        } catch (IOException e) {
-            System.out.println("SDSC Dataset file not found (" + filename + "). Returning empty list.");
-            return lens;
-        }
-    }
-    
-    private static List<Cloudlet> createCloudletList(int brokerId, List<Vm> vmList, int pesNumber, List<Integer> lengths) {
-        List<Cloudlet> cloudletList = new ArrayList<>();
-        UtilizationModelFull utilModel = new UtilizationModelFull();
-        int cloudletAmount = lengths.size();
-
-        for (int i = 0; i < cloudletAmount; i++) {
-            long length = lengths.get(i);
-            Cloudlet cloudlet = new Cloudlet(i, length, pesNumber, CLOUDLET_FILESIZE, CLOUDLET_OUTPUTSIZE, utilModel, utilModel, utilModel);
-            cloudlet.setUserId(brokerId);
-            cloudletList.add(cloudlet);
-        }
-        return cloudletList;
-    }
-    
-    // --- Metode Pembuatan Objek CloudSim ---
-
-    private static Datacenter createDatacenter(String name) throws Exception {
-        List<Host> hostList = new ArrayList<>();
-        for (int i = 0; i < HOSTS_PER_DATACENTER; i++) {
-            List<Pe> peList = new ArrayList<>();
-            peList.add(new Pe(HOST_PE, new PeProvisionerSimple(HOST_PE_MIPS)));
-
-            Host host = new Host(i, new RamProvisionerSimple(HOST_RAM), new BwProvisionerSimple(HOST_BW), HOST_STORAGE, peList, new VmSchedulerTimeShared(peList));
-            hostList.add(host);
-        }
-        DatacenterCharacteristics characteristics = new DatacenterCharacteristics("x86", "Linux", VMM, hostList, 10.0, HOST_COST, 0.05, 0.1, 0.1);
-        return new Datacenter(name, characteristics, new VmAllocationPolicySimple(hostList), new LinkedList<Storage>(), 0);
-    }
-
-    private static DatacenterBroker createBroker() throws Exception {
-        return new DatacenterBroker("Broker_" + UUID.randomUUID().toString().substring(0,5));
     }
 }
